@@ -1,15 +1,23 @@
 # 24 Flavors of Positive Thinking
 
 ## Project Overview
-This study examines the effectiveness of the “24 Flavors of Positive Thinking” school-based positive psychology intervention in promoting character strengths among Hong Kong adolescents.
+This quasi-experimental study evaluates the effectiveness of a school-based positive psychology intervention in promoting character strengths among Hong Kong adolescents.
 
-## Methodology
-- Quasi-experimental research design
-- Intervention outcome analysis
-- Assessment of changes in character strengths
+## Statistical Methods
+- Descriptive statistics
+- Linear mixed-effects models
+- Intraclass correlation coefficients (ICC)
+- Repeated-measures analysis
+- Intervention effect estimation
+- Data visualization
+
+## Software
+IBM SPSS Statistics 29
 
 ## Repository Contents
-Analytical code and research materials associated with the study.
+Selected analytical materials supporting the evaluation of intervention outcomes.
 
-## Associated Manuscript
-Cultivating Character Strength: Evidence from the “24 Flavors of Positive Thinking” School-Based Program in Hong Kong Adolescents: A Quasi-Experimental Study.
+## Publication Status
+**Status:** Under review
+
+**Manuscript:** Cultivating Character Strength: Evidence from the “24 Flavors of Positive Thinking” School-Based Program in Hong Kong Adolescents: A Quasi-Experimental Study.
