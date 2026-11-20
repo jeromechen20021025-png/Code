@@ -1,0 +1,190 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-04-13"
+---
+
+```{r}
+data <- coping_data <- data.frame(
+  Class = factor(c("Secure-adjusted", "Ambivalent-strained", "Disorganised-adversity")),
+  Mean = c(18.296, 15.085, 14.780),
+  SE = c(0.324, 0.342, 0.973)
+)
+data
+```
+
+
+```{r}
+# Step 2: Load ggplot2
+library(ggplot2)
+
+# Step 3: Plot barplot with error bars
+ggplot(data, aes(x = Class, y = Mean)) +
+  geom_bar(stat = "identity", width = 0.6, color = "black") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), width = 0.2) +
+  labs(title = "Positive Coping by Class",
+       y = "Positive Coping Score",
+       x = "Latent Class") +
+  theme_minimal()
+
+```
+
+```{r}
+df <- read.table("/Users/jeromechen/Desktop/Shanghai/Shanghai/analysis/3class_output.dat", header = FALSE)
+df
+```
+
+```{r}
+colnames(df) <- c("Fcare", "Fencour", "Fcontrol",
+                  "Mcare", "Mencour", "Mcontrol",
+                  "Emoabus", "Phyabus", "Sexabus",
+                  "Emoneg", "Phyneg",
+                  "PCoping", "NCoping",
+                  "prob_c1", "prob_c2", "prob_c3",
+                  "Class")
+
+# Convert Class to factor
+df$Class <- factor(df$Class)
+
+```
+
+```{r}
+# Boxplot for Positive Coping
+boxplot(PCoping ~ Class, data = df,
+        main = "Positive Coping by Latent Class",
+        xlab = "Latent Class", ylab = "Positive Coping",
+        col = c("skyblue", "lightgreen", "salmon"),
+        outline = FALSE,  # Disable outlier dots
+        names = c("Ambivalent-strained", "Secure-adjusted", "Disorganised-adversity"))
+
+```
+```{r}
+
+# Boxplot for Negative Coping
+boxplot(NCoping ~ Class, data = df,
+        main = "Negative Coping by Latent Class",
+        xlab = "Latent Class", ylab = "Negative Coping",
+        col = c("skyblue", "lightgreen", "salmon"))
+
+```
+```{r}
+# Boxplot for Positive Coping with participant dots
+boxplot(PCoping ~ Class, data = df,
+        main = "Positive Coping by Latent Class",
+        xlab = "Latent Class", ylab = "Positive Coping",
+        col = c("skyblue", "lightgreen", "salmon"),
+        outline = FALSE)  # Disable outlier dots
+
+```
+
+
+```{r}
+# Boxplot for Negative Coping with participant dots
+boxplot(NCoping ~ Class, data = df,
+        main = "Negative Coping by Latent Class",
+        xlab = "Latent Class", ylab = "Negative Coping",
+        col = c("skyblue", "lightgreen", "salmon"),
+        outline = FALSE)  # Disable outlier dots
+
+# Add the individual participant dots
+points(jitter(rep(1:nrow(df), length = nrow(df))), 
+       df$NCoping, 
+       col = "black", 
+       pch = 16,  # Solid circle
+       cex = 0.7)  # Size of the dots
+
+```
+```{r}
+# Data for the plot (Means and Standard Errors)
+coping_strategy <- c("Positive Coping", "Negative Coping")
+secure_adjusted_means <- c(18.30, 11.13)
+secure_adjusted_se <- c(0.32, 0.20)
+
+ambivalent_strained_means <- c(15.09, 11.50)
+ambivalent_strained_se <- c(0.34, 0.23)
+
+high_risk_adversity_means <- c(14.78, 13.98)
+high_risk_adversity_se <- c(0.97, 0.58)
+
+# Create a data frame for plotting
+df <- data.frame(
+  Strategy = rep(coping_strategy, each = 3),
+  Group = rep(c("Secure-adjusted", "Ambivalent-strained", "High-risk adversity"), times = 2),
+  Mean = c(secure_adjusted_means, ambivalent_strained_means, high_risk_adversity_means),
+  SE = c(secure_adjusted_se, ambivalent_strained_se, high_risk_adversity_se)
+)
+
+# Load necessary libraries
+library(ggplot2)
+```
+
+
+```{r}
+# Create the bar plot with error bars
+ggplot(df, aes(x = Strategy, y = Mean, fill = Group, group = Group)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), position = position_dodge(0.7), width = 0.25) +
+  labs(x = "Coping Strategy", y = "Mean Score", title = "Coping Strategies by Group") +
+  theme_minimal() +
+  scale_fill_manual(values = c("skyblue", "lightgreen", "salmon"))
+
+
+```
+```{r}
+# Create a data frame for plotting
+data <- data.frame(
+  CopingStrategy = rep(c("Positive Coping", "Negative Coping"), each = 3),
+  MeanScore = c(18.30, 15.09, 14.78, 11.13, 11.50, 13.98),  # Means for each coping strategy
+  SE = c(0.32, 0.34, 0.97, 0.20, 0.23, 0.58),  # Standard errors for each coping strategy
+  Group = rep(c("Secure-adjusted", "Ambivalent-strained", "High-risk adversity"), 2)
+)
+
+# Factor levels to ensure bars appear in the correct order
+data$Group <- factor(data$Group, levels = c("Secure-adjusted", "Ambivalent-strained", "High-risk adversity"))
+
+# Plot the bar chart with error bars
+library(ggplot2)
+ggplot(data, aes(x = CopingStrategy, y = MeanScore, fill = Group, group = Group)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  geom_errorbar(aes(ymin = MeanScore - SE, ymax = MeanScore + SE), 
+                position = position_dodge(width = 0.8), width = 0.25) +
+  labs(title = "Coping Strategies by Group", y = "Mean Score", x = "Coping Strategy") +
+  scale_fill_manual(values = c("skyblue", "lightgreen", "salmon")) +
+  theme_minimal() +
+  theme(axis.line = element_line(size = 1), # Thicker axis lines
+        axis.ticks = element_line(size = 1), # Thicker axis ticks
+        panel.grid = element_blank()) # Remove grid lines
+
+```
+
+```{r}
+# Create a data frame for plotting
+data <- data.frame(
+  CopingStrategy = rep(c("Positive Coping", "Negative Coping"), each = 3),
+  MeanScore = c(18.30, 15.09, 14.78, 11.13, 11.50, 13.98),  # Means for each coping strategy
+  SE = c(0.32, 0.34, 0.97, 0.20, 0.23, 0.58),  # Standard errors for each coping strategy
+  Profiles = rep(c("Secure-adjusted", "Ambivalent-strained", "High-risk adversity"), 2)
+)
+
+# Factor levels to ensure bars appear in the correct order
+data$Profiles <- factor(data$Profiles, levels = c("Secure-adjusted", "Ambivalent-strained", "High-risk adversity"))
+
+# Plot the bar chart with error bars
+library(ggplot2)
+ggplot(data, aes(x = CopingStrategy, y = MeanScore, fill = Profiles, group = Profiles)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7, color = "black") +  # Add border line
+  geom_errorbar(aes(ymin = MeanScore - SE, ymax = MeanScore + SE), 
+                position = position_dodge(width = 0.8), width = 0.25) +
+  labs( y = "Mean Score", x = "Coping Strategies") +
+  scale_fill_manual(values = c("skyblue", "lightgreen", "salmon")) +
+  theme_minimal() +
+  theme(axis.line = element_line(size = 0.5), # Thicker axis lines
+        axis.ticks = element_line(size = 0.5), # Thicker axis ticks
+        panel.grid = element_blank(),   
+        text = element_text(family = "Times New Roman"),# Remove grid lines
+        plot.margin = unit(c(1, 1, 1, 1), "cm")) + # Adjust margins
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 20))# Remove space between chart area and x-axis
+
+```
+

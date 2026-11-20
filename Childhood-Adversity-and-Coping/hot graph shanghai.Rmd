@@ -1,0 +1,192 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-04-11"
+---
+
+```{r}
+dataset <- Dataset
+head(dataset)
+```
+
+```{r}
+install.packages("corrplot")
+install.packages("Seurat")
+install.packages("RColorBrewer")
+library(corrplot)
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(RColorBrewer)
+```
+
+```{r}
+cordata <- dataset[, c("Fcare", "Fencourage","Fcontrol", "Mcare", "Mencourage", "Mcontrol", "Emotional abuse", "Physical abuse", "Sexual abuse", "Emotional neglect", "Physical neglect", "Pcoping", "Ncoping") ]
+
+
+colnames(cordata) <- c("Care (Father)", "Encouragement (Father)", "Control (Father)",
+                       "Care (Mother)", "Encouragement (Mother)", "Control (Mother)",
+                       "Emotional abuse", "Physical abuse", "Sexual abuse",
+                       "Emotional neglect", "Physical neglect",
+                       "Positive coping", "Negative coping")
+
+```
+
+```{r}
+cormatrix <- cor(cordata)
+cormatrix
+corrplot(cormatrix, method = "circle", type = "upper", tl.col = "black", tl.srt = 45)
+```
+
+```{r}
+cell_cor_p <- cor.mtest(cormatrix, conf.level = 0.95)$p
+```
+
+```{r}
+par(family = "Times")
+corrplot(cormatrix, 
+         method = 'square',
+         order = "hclust", 
+         hclust.method='ward.D',
+         type = "upper", 
+         col = rev(brewer.pal(n=8, name="RdYlBu")),
+         tl.cex=0.8,
+         tl.col = "black",
+         cl.cex = 0.5,
+         cl.pos = "b",
+         cl.length = 5,
+         cl.ratio=0.1,
+         p.mat = cell_cor_p,
+         sig.level = 0.05,
+         insig='label_sig',
+         pch = '*',
+         pch.col='red',
+         pch.cex=1,
+         mar=c(0, 0, 0, 0)) 
+```
+
+```{r}
+
+corrplot(cormatrix, 
+         method = 'square',
+         order = "hclust", 
+         hclust.method='ward.D',
+         type = "upper", 
+         col = rev(brewer.pal(n=8, name="RdYlBu")),
+         tl.cex=0.8,
+         tl.col = "black",
+         cl.cex = 0.5,
+         cl.pos = "b",
+         cl.length = 5,
+         cl.ratio=0.1,
+         p.mat = cell_cor_p,
+         sig.level = 0.05,
+         insig='blank',
+         mar=c(3, 0, 2, 0)) 
+```
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Create data frame
+data <- data.frame(
+  Group = c(rep("Secure-adjusted", 30), rep("Ambivalent-strained", 30), rep("Disorganised-adversity", 30)),
+  Positive_Coping_Mean = c(18.30, 15.09, 14.78),
+  Positive_Coping_SE = c(0.32, 0.34, 0.97),
+  Negative_Coping_Mean = c(11.13, 11.50, 13.98),
+  Negative_Coping_SE = c(0.20, 0.23, 0.58)
+)
+
+# Simulate data for positive coping based on the mean and SE for each group
+set.seed(123)  # For reproducibility
+n <- 30  # Number of simulated data points per group
+
+# Simulate positive coping data
+data$Positive_Coping <- c(
+  rnorm(n, mean = data$Positive_Coping_Mean[1], sd = data$Positive_Coping_SE[1]),
+  rnorm(n, mean = data$Positive_Coping_Mean[2], sd = data$Positive_Coping_SE[2]),
+  rnorm(n, mean = data$Positive_Coping_Mean[3], sd = data$Positive_Coping_SE[3])
+)
+
+# Simulate negative coping data
+data$Negative_Coping <- c(
+  rnorm(n, mean = data$Negative_Coping_Mean[1], sd = data$Negative_Coping_SE[1]),
+  rnorm(n, mean = data$Negative_Coping_Mean[2], sd = data$Negative_Coping_SE[2]),
+  rnorm(n, mean = data$Negative_Coping_Mean[3], sd = data$Negative_Coping_SE[3])
+)
+
+# Create the box plots for positive coping
+ggplot(data, aes(x = Group, y = Positive_Coping)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Positive Coping by Group", y = "Positive Coping")
+
+# Create the box plots for negative coping
+ggplot(data, aes(x = Group, y = Negative_Coping)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Negative Coping by Group", y = "Negative Coping")
+
+ 
+
+```
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Create data frame (same as before)
+data <- data.frame(
+  Group = c(rep("Secure-adjusted", 30), rep("Ambivalent-strained", 30), rep("Disorganised-adversity", 30)),
+  Positive_Coping_Mean = c(18.30, 15.09, 14.78),
+  Positive_Coping_SE = c(0.32, 0.34, 0.97),
+  Negative_Coping_Mean = c(11.13, 11.50, 13.98),
+  Negative_Coping_SE = c(0.20, 0.23, 0.58)
+)
+data
+```
+
+
+```{r}
+# Simulate data for positive and negative coping (same as before)
+set.seed(123)
+n <- 30  # Number of simulated data points per group
+
+# Simulate positive coping data
+data$Positive_Coping <- c(
+  rnorm(n, mean = data$Positive_Coping_Mean[1], sd = data$Positive_Coping_SE[1]),
+  rnorm(n, mean = data$Positive_Coping_Mean[2], sd = data$Positive_Coping_SE[2]),
+  rnorm(n, mean = data$Positive_Coping_Mean[3], sd = data$Positive_Coping_SE[3])
+)
+
+# Simulate negative coping data
+data$Negative_Coping <- c(
+  rnorm(n, mean = data$Negative_Coping_Mean[1], sd = data$Negative_Coping_SE[1]),
+  rnorm(n, mean = data$Negative_Coping_Mean[2], sd = data$Negative_Coping_SE[2]),
+  rnorm(n, mean = data$Negative_Coping_Mean[3], sd = data$Negative_Coping_SE[3])
+)
+
+# Create the enhanced box plot for Positive Coping
+ggplot(data, aes(x = Group, y = Positive_Coping, fill = Group)) +
+  geom_boxplot(outlier.size = 3, outlier.colour = "red", width = 0.7, alpha = 0.6) +  # Adjust boxplot appearance
+  geom_jitter(width = 0.1, size = 2, aes(color = Group), alpha = 0.6) +  # Add jittered points
+  scale_fill_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb")) +  # Custom colors for groups
+  scale_color_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb")) +  # Match jitter color
+  theme_minimal(base_size = 14) +  # Use minimal theme
+  labs(title = "Boxplot of Positive Coping by Group", 
+       y = "Positive Coping", x = "Group") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+# Create the enhanced box plot for Negative Coping
+ggplot(data, aes(x = Group, y = Negative_Coping, fill = Group)) +
+  geom_boxplot(outlier.size = 3, outlier.colour = "red", width = 0.7, alpha = 0.6) +  # Adjust boxplot appearance
+  geom_jitter(width = 0.1, size = 2, aes(color = Group), alpha = 0.6) +  # Add jittered points
+  scale_fill_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb")) +  # Custom colors for groups
+  scale_color_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb")) +  # Match jitter color
+  theme_minimal(base_size = 14) +  # Use minimal theme
+  labs(title = "Boxplot of Negative Coping by Group", 
+       y = "Negative Coping", x = "Group") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+```
+
