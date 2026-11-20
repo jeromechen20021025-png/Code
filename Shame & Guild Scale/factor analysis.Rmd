@@ -1,0 +1,417 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-01-03"
+---
+
+```{r}
+install.packages("lavaan")
+install.packages("foreign")
+install.packages("semPlot")
+library(foreign)
+library(semPlot)
+library(lavaan)
+dataset <- dataset
+head(dataset)
+```
+
+```{r}
+cfa_data <- dataset[dataset$Subsample == 2,]
+cfa_data
+```
+
+```{r}
+
+shame_model <- '
+Factor1 =~ S3SG1 + S2SG2 + S3SG3 + S3SG4 + S1SG5 + S3SG6 + S2SG7 + S3SG8
+Factor2 =~ S1SG9 + S1SG11 + S2SG12 + S1SG13
+'
+
+# Fit the CFA model
+fit1 <- cfa(shame_model, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit1, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+modificationindices(fit1, minimum.value = 10)
+```
+
+```{r}
+semPaths(fit1, "std", layout = "tree")
+```
+```{r}
+semPlot::semPaths(fit1)
+```
+
+
+```{r}
+guilt_model <- '
+Factor1 =~ G2SG17 + G2SG19 + G3SG20 + G2SG21 + G2SG25
+Factor2 =~ G1SG16 + G1SG18 + G3SG22 + G1SG24 + G3SG23
+G3SG22	~~	G3SG23
+G3SG20	~~	G2SG25
+G2SG17	~~	G2SG21
+G1SG16	~~	G1SG18
+'
+
+# Fit the CFA model
+fit2 <- cfa(guilt_model, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit2, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+modificationindices(fit2, minimum.value = 10)
+```
+
+
+```{r}
+semPlot::semPaths(fit2)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+avoidance_model2 <- '
+f1 =~ A2AC1 + A3AC2 + A2AC3 + A2AC5 + A2AC7
+f2 =~ A1AC9 + A1AC10 + A1AC11 + A1AC12
+A1AC11	~~	A1AC12
+	A2AC5	~~	A2AC7
+	A2AC1	~~	A2AC3
+'
+
+# Fit the CFA model
+fit3 <- cfa(avoidance_model2, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit3, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+modificationindices(fit3, minimum.value = 10)
+```
+```{r}
+# Get summary of largest residuals
+resid <- residuals(fit3, type = "standardized")
+round(max(abs(resid$cov)), 3)
+```
+```{r}
+# Get the full residual matrix
+resid_matrix <- residuals(fit3, type = "standardized")$cov
+
+# Find the pairs with large residuals (>2.58)
+high_resids <- which(abs(resid_matrix) > 2.58, arr.ind = TRUE)
+print(resid_matrix[high_resids])
+```
+
+
+```{r}
+# Create a matrix of TRUE/FALSE for residuals > 2.58
+high_pairs <- abs(resid_matrix) > 2.58
+```
+
+
+```{r}
+# Get row and column indices of high residuals
+high_indices <- which(high_pairs, arr.ind = TRUE)
+```
+
+
+```{r}
+# Create a data frame showing the variable pairs and their residuals
+residual_summary <- data.frame(
+  Variable1 = rownames(resid_matrix)[high_indices[,1]],
+  Variable2 = colnames(resid_matrix)[high_indices[,2]],
+  Residual = resid_matrix[high_pairs]
+)
+residual_summary
+```
+
+```{r}
+second_order_model_revised <- '
+  # Reorganize first-order factors
+  formal =~ A2AC4 + A2AC6 + A2AC7      # Work and institutional contexts
+  informal =~ A2AC1 + A3AC2 + A2AC3 + A2AC5   # Social and personal contexts
+  f2 =~ A1AC9 + A1AC10 + A1AC11 + A1AC12
+  
+  # Second-order factor
+  general =~ NA*formal + informal + f2
+  
+  # Fix the variance of the general factor to 1
+  general ~~ 1*general
+  
+  # Maintain error correlations
+  A1AC11 ~~ A1AC12
+'
+```
+
+
+```{r}
+bifactor_model_avoidance <- '
+  g =~ A2AC1 + A3AC2 + A2AC3 + A2AC4 + A2AC5 + A2AC6 + A2AC7 + A1AC9 + A1AC10 + A1AC11 + A1AC12
+  
+
+  f1 =~ A2AC1 + A3AC2 + A2AC3 + A2AC4 + A2AC5 + A2AC6 + A2AC7
+  f2 =~ A1AC9 + A1AC10 + A1AC11 + A1AC12
+  
+  A1AC11 ~~ A1AC12
+
+  
+  # Orthogonality constraints
+  g ~~ 0*f1
+  g ~~ 0*f2
+  f1 ~~ 0*f2
+'
+
+# Fit the CFA model
+fit_bi_av <- cfa(bifactor_model_avoidance, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit_bi_av, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+modificationindices(fit_bi_av, minimum.value = 10)
+```
+
+```{r}
+semPlot::semPaths(fit_bi_av)
+```
+```{r}
+unidimensional_model <- '
+  # Single factor loading on all items
+  general =~ A2AC1 + A3AC2 + A2AC3 + A2AC4 + A2AC5 + A2AC6 + A2AC7 + A1AC9 + A1AC10 + A1AC11 + A1AC12
+  A1AC11	~~	A1AC12
+  A1AC9	~~	A1AC10
+  A2AC4	~~	A2AC5
+  A2AC7	~~	A1AC10
+'
+# Fit the CFA model
+fit_uni <- cfa(unidimensional_model, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit_uni, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+semPlot::semPaths(fit_u)
+```
+
+
+```{r}
+modificationindices(fit_uni, minimum.value = 10)
+```
+
+```{r}
+
+  second_order_model_av <- '
+  # First-order factors
+  f1 =~ A2AC1 + A3AC2 + A2AC3 + A2AC4 + A2AC5 + A2AC6 + A2AC7
+  f2 =~ A1AC9 + A1AC10 + A1AC11 + A1AC12
+  
+  # Second-order factor
+  general =~ NA*f1 + f2
+  
+  # Fix the variance of the general factor to 1
+  general ~~ 1*general
+  
+  # Maintain error correlations
+  A1AC11 ~~ A1AC12
+
+'
+
+```
+
+```{r}
+# Fit the CFA model
+fit_sec_av <- cfa(second_order_model_av, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit_sec_av, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+second_order_model_revised <- '
+  public =~ A2AC1 + A3AC2                     # Public sphere disclosure
+  close =~ A2AC3 + A2AC4 + A2AC5              # Close relationships
+  community =~ A2AC6 + A2AC7                  # Professional/community relationships
+  f2 =~ A1AC9 + A1AC10 + A1AC11 + A1AC12     # Original second factor
+  
+
+  general =~ NA*public + close + community + f2
+  
+
+  general ~~ 1*general
+  
+
+  A1AC11 ~~ A1AC12
+'
+```
+
+```{r}
+# Fit the CFA model
+fit_sec_av_re <- cfa(second_order_model_revised, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit_sec_av_re, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+modificationindices(fit_sec_av_re, minimum.value = 10)
+```
+
+
+
+```{r}
+semPlot::semPaths(fit_sec_av_re)
+```
+
+```{r}
+compensation_model <- '
+f1 =~ C1AC17 + C1AC18 + C2AC19 + C2AC20 + C2AC21 + C2AC25
+f2 =~ C3AC23 + C3AC24 + C3AC26
+C1AC17	~~	C1AC18
+C3AC23	~~	C3AC24
+'
+
+# Fit the CFA model
+fit4 <- cfa(compensation_model, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit4, standardized = TRUE, fit.measures = TRUE)
+```
+
+
+
+```{r}
+# Show only modifications that would improve chi-square by more than 10
+modificationindices(fit4, minimum.value = 10)
+```
+```{r}
+semPlot::semPaths(fit4)
+```
+
+
+```{r}
+compensation_model2 <- '
+f1 =~ C2AC19 + C2AC20 + C2AC21 + C2AC25 + C2AC22
+f2 =~ C3AC23 +  C3AC24 
+f3 =~ C1AC17 + C1AC18
+'
+
+# Fit the CFA model
+fit5 <- cfa(compensation_model2, data = cfa_data)
+
+# Get comprehensive model fit statistics
+summary(fit5, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+# Show only modifications that would improve chi-square by more than 10
+modificationindices(fit5, minimum.value = 10)
+```
+
+```{r}
+semPlot::semPaths(fit5)
+```
+
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+# Filter out "Don't Know" responses and create clean dataset
+# Exclude groups 1, 2, and 7
+dataset_clean <- dataset %>%
+  filter(!(Income %in% c(1, 2, 7)))
+
+```
+
+
+```{r}
+# Specify your CFA model (based on your factor structure)
+shame_model <- '
+  Factor1 =~ S3SG4 + S3SG3 + S1SG5 + S3SG8 + S3SG1 + S2SG2 + S3SG6 + S2SG7
+  Factor2 =~ S2SG12 + S1SG9 + S1SG13
+  S2SG2 ~~ S2SG12
+  S3SG4 ~~ S3SG3
+'
+```
+
+
+```{r}
+# Test configural invariance
+configural <- cfa(shame_model, 
+                 data = dataset_clean, 
+                 group = "Income")
+```
+
+
+```{r}
+# Test metric invariance (equal factor loadings)
+metric <- cfa(shame_model, 
+             data = dataset_clean, 
+             group = "Income",
+             group.equal = "loadings")
+```
+
+
+```{r}
+# Test scalar invariance (equal intercepts)
+scalar <- cfa(shame_model, 
+             data = dataset_clean, 
+             group = "Income",
+             group.equal = c("loadings", "intercepts"))
+```
+
+
+```{r}
+# Compare models
+anova(configural, metric, scalar)
+```
+
+
+```{r}
+# Examine fit measures for each model
+fitMeasures(configural, c("cfi", "rmsea", "srmr"))
+fitMeasures(metric, c("cfi", "rmsea", "srmr"))
+fitMeasures(scalar, c("cfi", "rmsea", "srmr"))
+```
+
+```{r}
+table(dataset$Income, dataset$S3SG3)
+```
+
+
+```{r}
+library(dplyr)
+
+# Filter for group 7 (income group 7)
+group_7_data <- dataset %>% filter(Income == 7)
+
+# Check the distribution of S3SG3 in group 7
+table(group_7_data$S3SG3)
+```
+
+```{r}
+group_7_data %>%
+  select(S3SG3, S2SG2, S2SG12, S1SG9, S1SG13) %>%
+  summarize_all(var, na.rm = TRUE)
+```
+
+```{r}
+table(dataset$Income)
+```
+
+```{r}
+cor(group_7_data %>% select(S3SG3, S2SG2, S2SG12, S1SG9, S1SG13))
+```
+
