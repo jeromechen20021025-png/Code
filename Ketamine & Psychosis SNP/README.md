@@ -16,4 +16,4 @@ To be confirmed
 Selected analytical materials supporting the investigation of genetic vulnerability to psychosis in the context of ketamine use.
 
 ## Publication Status
-**Status:** Research project; publication status to be confirmed.
+**Status:** In preparation.
