@@ -1,0 +1,1004 @@
+---
+title: "Untitled"
+output: html_document
+date: "2026-09-23"
+---
+
+```{r}
+install.packages(c(
+  "readxl",
+  "dplyr",
+  "stringr",
+  "tidyr",
+  "ggplot2",
+  "broom",
+  "logistf"
+))
+```
+
+```{r}
+library(readxl)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(broom)
+library(logistf)
+```
+```{r}
+geno_raw <- 整理结果
+dim(geno_raw)
+names(geno_raw)
+head(geno_raw)
+```
+```{r}
+geno <- geno_raw %>%
+  mutate(
+    KC_ID = str_extract(SampleName, "KC[0-3][0-9]+")
+  ) %>%
+  filter(!is.na(KC_ID))
+```
+
+```{r}
+geno <- geno %>%
+  mutate(
+    group = str_sub(KC_ID, 3, 3),
+
+    ketamine = case_when(
+      group %in% c("0", "1") ~ 1,
+      group %in% c("2", "3") ~ 0
+    ),
+
+    psychosis = case_when(
+      group %in% c("0", "2") ~ 1,
+      group %in% c("1", "3") ~ 0
+    )
+  )
+geno %>%
+  count(group, ketamine, psychosis)
+```
+```{r}
+geno %>%
+  count(KC_ID) %>%
+  filter(n > 1)
+snp_cols <- names(geno)[str_detect(names(geno), "^rs")]
+
+geno <- geno %>%
+  mutate(
+    n_genotypes_called =
+      rowSums(!is.na(pick(all_of(snp_cols))))
+  ) %>%
+  group_by(KC_ID) %>%
+  slice_max(
+    order_by = n_genotypes_called,
+    n = 1,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+```
+
+```{r}
+geno %>%
+  count(group)
+```
+
+```{r}
+table(
+  geno$group,
+  geno$rs393795,
+  useNA = "ifany"
+)
+```
+
+```{r}
+k_users <- geno %>%
+  filter(ketamine == 1)
+```
+
+```{r}
+table(
+  k_users$psychosis,
+  k_users$rs393795
+)
+```
+
+```{r}
+fisher.test(
+  table(
+    k_users$psychosis,
+    k_users$rs393795
+  )
+)
+```
+
+```{r}
+geno %>% count(group)
+```
+
+```{r}
+table(geno$group, geno$rs393795, useNA = "ifany")
+```
+
+```{r}
+# Keep ketamine users with non-missing rs393795
+rs393795_k <- geno %>%
+  filter(
+    ketamine == 1,
+    !is.na(rs393795)
+  ) %>%
+  mutate(
+    rs393795 = factor(rs393795)
+  )
+
+# Check genotype levels
+levels(rs393795_k$rs393795)
+```
+
+```{r}
+rs393795_k <- rs393795_k %>%
+  mutate(
+    rs393795 = relevel(rs393795, ref = "GG")
+  )
+```
+
+```{r}
+model_rs393795 <- glm(
+  psychosis ~ rs393795,
+  data = rs393795_k,
+  family = binomial
+)
+
+summary(model_rs393795)
+```
+
+```{r}
+broom::tidy(
+  model_rs393795,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+```
+
+```{r}
+exp(coef(model_rs393795))
+```
+
+```{r}
+non_k_users <- geno %>%
+  filter(
+    ketamine == 0,
+    !is.na(rs393795)
+  ) %>%
+  mutate(
+    rs393795 = factor(rs393795),
+    rs393795 = relevel(rs393795, ref = "GG")
+  )
+table(
+  non_k_users$psychosis,
+  non_k_users$rs393795
+)
+fisher.test(
+  table(
+    non_k_users$psychosis,
+    non_k_users$rs393795
+  )
+)
+model_rs393795_nonK <- glm(
+  psychosis ~ rs393795,
+  data = non_k_users,
+  family = binomial
+)
+
+model_rs393795_nonK <- glm(
+  psychosis ~ rs393795,
+  data = non_k_users,
+  family = binomial
+)
+```
+
+```{r}
+rs393795_all <- geno %>%
+  filter(!is.na(rs393795)) %>%
+  mutate(
+    rs393795 = factor(rs393795),
+    rs393795 = relevel(rs393795, ref = "GG"),
+    ketamine = factor(
+      ketamine,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    )
+  )
+table(
+  rs393795_all$psychosis,
+  rs393795_all$rs393795,
+  rs393795_all$ketamine
+)
+```
+
+```{r}
+model_no_interaction <- glm(
+  psychosis ~ rs393795 + ketamine,
+  data = rs393795_all,
+  family = binomial
+)
+model_interaction <- glm(
+  psychosis ~ rs393795 * ketamine,
+  data = rs393795_all,
+  family = binomial
+)
+anova(
+  model_no_interaction,
+  model_interaction,
+  test = "LRT"
+)
+```
+
+```{r}
+broom::tidy(
+  model_interaction,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+```
+
+```{r}
+snp_cols <- names(geno)[stringr::str_detect(names(geno), "^rs")]
+
+length(snp_cols)
+```
+
+```{r}
+get_snp_qc <- function(x, snp_name) {
+
+  # Clean genotype text
+  x <- toupper(trimws(as.character(x)))
+  x[x == ""] <- NA
+
+  # Number of participants
+  n_total <- length(x)
+
+  # Number with a genotype call
+  n_called <- sum(!is.na(x))
+
+  # Call rate
+  call_rate <- n_called / n_total
+
+  # Keep ordinary 2-letter A/C/G/T genotypes
+  simple_gt <- x[
+    !is.na(x) &
+    grepl("^[ACGT]{2}$", x)
+  ]
+
+  n_simple <- length(simple_gt)
+
+  # Split AA / AG / GG etc. into individual alleles
+  alleles <- unlist(strsplit(simple_gt, ""))
+
+  allele_counts <- table(alleles)
+
+  n_alleles <- length(allele_counts)
+
+  # Minor allele information
+  if (n_alleles == 2) {
+
+    minor_allele <- names(which.min(allele_counts))
+    MAC <- min(allele_counts)
+    MAF <- MAC / sum(allele_counts)
+
+  } else {
+
+    minor_allele <- NA
+    MAC <- NA
+    MAF <- NA
+  }
+
+  data.frame(
+    SNP = snp_name,
+    N_total = n_total,
+    N_called = n_called,
+    Call_rate = call_rate,
+    N_simple_genotypes = n_simple,
+    N_alleles = n_alleles,
+    Minor_allele = minor_allele,
+    MAC = MAC,
+    MAF = MAF,
+    Genotypes = paste(
+      sort(unique(x[!is.na(x)])),
+      collapse = ", "
+    )
+  )
+}
+```
+
+```{r}
+qc_list <- lapply(
+  snp_cols,
+  function(snp) {
+    get_snp_qc(geno[[snp]], snp)
+  }
+)
+
+qc <- dplyr::bind_rows(qc_list)
+head (qc)
+```
+
+```{r}
+qc <- qc %>%
+  mutate(
+    Pass_call_rate = Call_rate >= 0.95
+  )
+```
+
+```{r}
+qc %>%
+  arrange(Call_rate) %>%
+  select(
+    SNP,
+    N_called,
+    Call_rate,
+    Genotypes
+  ) %>%
+  head(15)
+```
+
+```{r}
+qc <- qc %>%
+  mutate(
+    Simple_biallelic =
+      N_simple_genotypes == N_called &
+      N_alleles == 2
+  )
+```
+
+```{r}
+qc <- qc %>%
+  mutate(
+    Pass_basic_QC =
+      Pass_call_rate &
+      Simple_biallelic
+  )
+table(qc$Pass_basic_QC)
+```
+
+```{r}
+qc %>%
+  filter(!Pass_basic_QC) %>%
+  select(
+    SNP,
+    N_called,
+    Call_rate,
+    N_alleles,
+    Genotypes
+  ) %>%
+  arrange(Call_rate)
+```
+
+```{r}
+qc %>%
+  filter(SNP == "rs393795")
+```
+
+```{r}
+qc <- qc %>%
+  mutate(
+    Rare_MAC = !is.na(MAC) & MAC < 10
+  )
+qc %>%
+  filter(
+    Pass_basic_QC,
+    Rare_MAC
+  ) %>%
+  select(
+    SNP,
+    Minor_allele,
+    MAC,
+    MAF
+  ) %>%
+  arrange(MAC)
+```
+
+```{r}
+qc_final <- qc %>%
+  arrange(
+    desc(Pass_basic_QC),
+    desc(Call_rate),
+    desc(MAF)
+  )
+
+View(qc_final)
+write.csv(
+  qc_final,
+  "results/SNP_QC_table.csv",
+  row.names = FALSE
+)
+```
+
+```{r}
+table(qc$Pass_basic_QC)
+qc %>%
+  filter(Pass_basic_QC, Rare_MAC) %>%
+  select(SNP, Minor_allele, MAC, MAF)
+```
+
+```{r}
+analysis_snps <- qc %>%
+  filter(
+    Pass_basic_QC,
+    MAC >= 10
+  ) %>%
+  pull(SNP)
+
+length(analysis_snps)
+analysis_snps
+```
+
+```{r}
+qc %>%
+  filter(SNP == "rs393795") %>%
+  select(
+    SNP,
+    Minor_allele,
+    MAC,
+    MAF
+  )
+```
+
+```{r}
+# Lookup table:
+# SNP name -> minor allele
+minor_alleles <- setNames(
+  qc$Minor_allele,
+  qc$SNP
+)
+
+# Make a copy of the genotype dataset
+geno_dosage <- geno
+
+# Create one dosage variable for each analysis SNP
+for (snp in analysis_snps) {
+
+  minor <- minor_alleles[[snp]]
+
+  geno_dosage[[paste0(snp, "_dosage")]] <-
+    ifelse(
+      is.na(geno_dosage[[snp]]),
+      NA_integer_,
+      stringr::str_count(
+        geno_dosage[[snp]],
+        stringr::fixed(minor)
+      )
+    )
+}
+```
+
+```{r}
+table(
+  geno_dosage$rs393795,
+  geno_dosage$rs393795_dosage,
+  useNA = "ifany"
+)
+```
+
+```{r}
+model_additive_K <- glm(
+  psychosis ~ rs393795_dosage,
+  data = geno_dosage %>%
+    filter(ketamine == 1),
+  family = binomial
+)
+
+broom::tidy(
+  model_additive_K,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+```
+
+```{r}
+model_additive_interaction <- glm(
+  psychosis ~ rs393795_dosage * ketamine,
+  data = geno_dosage,
+  family = binomial
+)
+
+broom::tidy(
+  model_additive_interaction,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+```
+
+```{r}
+run_snp_model <- function(snp) {
+
+  dosage_var <- paste0(snp, "_dosage")
+
+  dat <- geno_dosage %>%
+    select(
+      psychosis,
+      ketamine,
+      all_of(dosage_var)
+    ) %>%
+    filter(
+      !is.na(.data[[dosage_var]])
+    )
+
+  # Additive SNP × ketamine model
+  model <- glm(
+    reformulate(
+      c(
+        dosage_var,
+        "ketamine",
+        paste0(dosage_var, ":ketamine")
+      ),
+      response = "psychosis"
+    ),
+    data = dat,
+    family = binomial
+  )
+
+  result <- broom::tidy(
+    model,
+    exponentiate = TRUE,
+    conf.int = TRUE
+  )
+
+  # Extract interaction term
+  interaction_row <- result %>%
+    filter(
+      grepl(
+        paste0(dosage_var, ":ketamine"),
+        term,
+        fixed = TRUE
+      )
+    )
+
+  data.frame(
+    SNP = snp,
+    N = nrow(dat),
+    OR_interaction = interaction_row$estimate,
+    CI_low = interaction_row$conf.low,
+    CI_high = interaction_row$conf.high,
+    P_interaction = interaction_row$p.value
+  )
+}
+```
+
+```{r}
+snp_results <- lapply(
+  analysis_snps,
+  run_snp_model
+) %>%
+  bind_rows()
+```
+
+```{r}
+snp_results %>%
+  arrange(P_interaction) %>%
+  head(20)
+```
+
+```{r}
+snp_results <- snp_results %>%
+  mutate(
+    FDR_q = p.adjust(
+      P_interaction,
+      method = "BH"
+    )
+  )
+```
+
+```{r}
+snp_results %>%
+  arrange(FDR_q) %>%
+  head(20)
+```
+
+```{r}
+length(analysis_snps)
+table(
+  geno_dosage$rs393795,
+  geno_dosage$rs393795_dosage,
+  useNA = "ifany"
+)
+broom::tidy(
+  model_additive_interaction,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+```
+
+```{r}
+check_snps <- c(
+  "rs11556505",
+  "rs2075650",
+  "rs34404554",
+  "rs71352238"
+)
+
+sapply(
+  check_snps,
+  function(x) {
+    table(geno_dosage[[paste0(x, "_dosage")]], useNA = "ifany")
+  }
+)
+```
+
+```{r}
+cor(
+  geno_dosage %>%
+    select(
+      all_of(paste0(check_snps, "_dosage"))
+    ),
+  use = "pairwise.complete.obs"
+)
+all(
+  geno_dosage$rs11556505_dosage ==
+    geno_dosage$rs2075650_dosage,
+  na.rm = TRUE
+)
+```
+
+```{r}
+check_vars <- paste0(check_snps, "_dosage")
+
+geno_dosage %>%
+  select(all_of(check_vars)) %>%
+  summarise(
+    all_1_2 = all(
+      (rs11556505_dosage == rs2075650_dosage) |
+        (is.na(rs11556505_dosage) & is.na(rs2075650_dosage))
+    ),
+    all_1_3 = all(
+      (rs11556505_dosage == rs34404554_dosage) |
+        (is.na(rs11556505_dosage) & is.na(rs34404554_dosage))
+    ),
+    all_1_4 = all(
+      (rs11556505_dosage == rs71352238_dosage) |
+        (is.na(rs11556505_dosage) & is.na(rs71352238_dosage))
+    )
+  )
+```
+
+```{r}
+dosage_vars <- paste0(analysis_snps, "_dosage")
+
+dosage_cor <- cor(
+  geno_dosage %>% select(all_of(dosage_vars)),
+  use = "pairwise.complete.obs"
+)
+
+# Find pairs with absolute correlation essentially equal to 1
+perfect_pairs <- which(
+  abs(dosage_cor) > 0.999999 &
+    upper.tri(dosage_cor),
+  arr.ind = TRUE
+)
+
+perfect_pairs_df <- data.frame(
+  SNP1 = sub("_dosage$", "", rownames(dosage_cor)[perfect_pairs[, 1]]),
+  SNP2 = sub("_dosage$", "", colnames(dosage_cor)[perfect_pairs[, 2]]),
+  r = dosage_cor[perfect_pairs]
+)
+
+perfect_pairs_df
+```
+```{r}
+# Create an exact "genotype signature" for every SNP,
+# treating missing values as part of the pattern
+
+signature_df <- tibble(
+  SNP = analysis_snps,
+  signature = sapply(
+    analysis_snps,
+    function(snp) {
+      x <- geno_dosage[[paste0(snp, "_dosage")]]
+
+      paste(
+        ifelse(is.na(x), "NA", as.character(x)),
+        collapse = "|"
+      )
+    }
+  )
+)
+
+# Find groups of SNPs with exactly the same participant-level dosage pattern
+redundant_groups <- signature_df %>%
+  group_by(signature) %>%
+  summarise(
+    n_SNPs = n(),
+    SNPs = paste(SNP, collapse = ", "),
+    .groups = "drop"
+  ) %>%
+  filter(n_SNPs > 1)
+
+redundant_groups
+```
+```{r}
+signature_df <- signature_df %>%
+  group_by(signature) %>%
+  mutate(
+    representative = first(SNP),
+    redundant = SNP != first(SNP)
+  ) %>%
+  ungroup()
+
+analysis_snps_nonredundant <- signature_df %>%
+  filter(!redundant) %>%
+  pull(SNP)
+
+length(analysis_snps_nonredundant)
+```
+
+```{r}
+run_full_snp_analysis <- function(snp) {
+
+  dosage_var <- paste0(snp, "_dosage")
+
+  dat <- geno_dosage %>%
+    select(
+      psychosis,
+      ketamine,
+      all_of(dosage_var)
+    ) %>%
+    filter(!is.na(.data[[dosage_var]]))
+
+  # -----------------------------
+  # 1. Ketamine users
+  # -----------------------------
+
+  dat_K <- dat %>%
+    filter(ketamine == 1)
+
+  model_K <- glm(
+    reformulate(
+      dosage_var,
+      response = "psychosis"
+    ),
+    data = dat_K,
+    family = binomial
+  )
+
+  result_K <- broom::tidy(
+    model_K,
+    exponentiate = TRUE,
+    conf.int = TRUE
+  ) %>%
+    filter(term == dosage_var)
+
+  # -----------------------------
+  # 2. Never-ketamine users
+  # -----------------------------
+
+  dat_nonK <- dat %>%
+    filter(ketamine == 0)
+
+  model_nonK <- glm(
+    reformulate(
+      dosage_var,
+      response = "psychosis"
+    ),
+    data = dat_nonK,
+    family = binomial
+  )
+
+  result_nonK <- broom::tidy(
+    model_nonK,
+    exponentiate = TRUE,
+    conf.int = TRUE
+  ) %>%
+    filter(term == dosage_var)
+
+  # -----------------------------
+  # 3. Interaction model
+  # -----------------------------
+
+  formula_interaction <- as.formula(
+    paste(
+      "psychosis ~",
+      dosage_var,
+      "* ketamine"
+    )
+  )
+
+  model_interaction <- glm(
+    formula_interaction,
+    data = dat,
+    family = binomial
+  )
+
+  result_interaction <- broom::tidy(
+    model_interaction,
+    exponentiate = TRUE,
+    conf.int = TRUE
+  )
+
+  interaction_term <- paste0(
+    dosage_var,
+    ":ketamine"
+  )
+
+  int_row <- result_interaction %>%
+    filter(term == interaction_term)
+
+  # -----------------------------
+  # Output one row
+  # -----------------------------
+
+  data.frame(
+    SNP = snp,
+
+    N_total = nrow(dat),
+    N_K = nrow(dat_K),
+    N_nonK = nrow(dat_nonK),
+
+    OR_K = result_K$estimate,
+    CI_low_K = result_K$conf.low,
+    CI_high_K = result_K$conf.high,
+    P_K = result_K$p.value,
+
+    OR_nonK = result_nonK$estimate,
+    CI_low_nonK = result_nonK$conf.low,
+    CI_high_nonK = result_nonK$conf.high,
+    P_nonK = result_nonK$p.value,
+
+    OR_interaction = int_row$estimate,
+    CI_low_interaction = int_row$conf.low,
+    CI_high_interaction = int_row$conf.high,
+    P_interaction = int_row$p.value
+  )
+}
+```
+
+```{r}
+full_results <- lapply(
+  analysis_snps,
+  run_full_snp_analysis
+) %>%
+  bind_rows()
+```
+
+```{r}
+full_results <- full_results %>%
+  left_join(
+    qc %>%
+      select(
+        SNP,
+        Minor_allele,
+        MAC,
+        MAF,
+        Call_rate
+      ),
+    by = "SNP"
+  )
+```
+
+```{r}
+full_results <- full_results %>%
+  mutate(
+    FDR_K = p.adjust(P_K, method = "BH"),
+    FDR_nonK = p.adjust(P_nonK, method = "BH"),
+    FDR_interaction = p.adjust(P_interaction, method = "BH")
+  )
+```
+
+```{r}
+full_results %>%
+  arrange(FDR_K) %>%
+  select(
+    SNP,
+    Minor_allele,
+    MAF,
+    OR_K,
+    CI_low_K,
+    CI_high_K,
+    P_K,
+    FDR_K
+  ) %>%
+  head(20)
+```
+```{r}
+full_results %>%
+  arrange(FDR_nonK) %>%
+  select(
+    SNP,
+    Minor_allele,
+    MAF,
+    OR_nonK,
+    CI_low_nonK,
+    CI_high_nonK,
+    P_nonK,
+    FDR_nonK
+  ) %>%
+  head(20)
+```
+```{r}
+full_results %>%
+  arrange(FDR_interaction) %>%
+  select(
+    SNP,
+    Minor_allele,
+    MAF,
+    OR_interaction,
+    CI_low_interaction,
+    CI_high_interaction,
+    P_interaction,
+    FDR_interaction
+  ) %>%
+  head(20)
+```
+
+```{r}
+full_results_nonredundant <- lapply(
+  analysis_snps_nonredundant,
+  run_full_snp_analysis
+) %>%
+  bind_rows() %>%
+  left_join(
+    qc %>%
+      select(
+        SNP,
+        Minor_allele,
+        MAC,
+        MAF,
+        Call_rate
+      ),
+    by = "SNP"
+  ) %>%
+  mutate(
+    FDR_K = p.adjust(P_K, method = "BH"),
+    FDR_nonK = p.adjust(P_nonK, method = "BH"),
+    FDR_interaction = p.adjust(
+      P_interaction,
+      method = "BH"
+    )
+  )
+```
+
+```{r}
+full_results_nonredundant %>%
+  arrange(FDR_interaction) %>%
+  head(20)
+```
+
+```{r}
+nrow(full_results)
+nrow(full_results_nonredundant)
+
+min(full_results$FDR_K, na.rm = TRUE)
+min(full_results$FDR_nonK, na.rm = TRUE)
+min(full_results$FDR_interaction, na.rm = TRUE)
+```
+
+```{r}
+full_results %>%
+  summarise(
+    nominal_K = sum(P_K < .05, na.rm = TRUE),
+    FDR_K = sum(FDR_K < .05, na.rm = TRUE),
+
+    nominal_nonK = sum(P_nonK < .05, na.rm = TRUE),
+    FDR_nonK = sum(FDR_nonK < .05, na.rm = TRUE),
+
+    nominal_interaction = sum(P_interaction < .05, na.rm = TRUE),
+    FDR_interaction = sum(FDR_interaction < .05, na.rm = TRUE)
+  )
+```
+
+```{r}
+full_results_nonredundant %>%
+  summarise(
+    nominal_K = sum(P_K < .05, na.rm = TRUE),
+    FDR_K_sig = sum(FDR_K < .05, na.rm = TRUE),
+    
+    nominal_nonK = sum(P_nonK < .05, na.rm = TRUE),
+    FDR_nonK_sig = sum(FDR_nonK < .05, na.rm = TRUE),
+    
+    nominal_interaction = sum(P_interaction < .05, na.rm = TRUE),
+    FDR_interaction_sig = sum(FDR_interaction < .05, na.rm = TRUE),
+    
+    min_FDR_K = min(FDR_K, na.rm = TRUE),
+    min_FDR_nonK = min(FDR_nonK, na.rm = TRUE),
+    min_FDR_interaction = min(FDR_interaction, na.rm = TRUE)
+  )
+```
+
