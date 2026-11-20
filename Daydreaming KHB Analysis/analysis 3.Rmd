@@ -1,0 +1,643 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-01-15"
+---
+
+```{r}
+data <- updated_analysis_three_domain
+library(lavaan)
+library(semPlot)
+high_ability_data <- data[data$high_ability == 2, ]
+```
+
+```{r}
+# Load necessary package
+library(lavaan)
+
+# Define the SEM model
+model <- '
+  # Define the latent variable
+  Daydreaming =~ Positive_dd + dysphoric_dd + attention_control
+
+  # Regressions (direct effects)
+  obj_under ~ Daydreaming
+  sub_under ~ Daydreaming
+
+  # Variances and covariances
+  Positive_dd ~~ dysphoric_dd
+  Positive_dd ~~ attention_control
+  dysphoric_dd ~~ attention_control
+'
+
+# Fit the SEM model
+fit <- sem(model, data = data, std.lv = TRUE)
+
+# Summarize the results
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+```
+```{r}
+model_measurement <- '
+  Daydreaming =~ Positive_dd + dysphoric_dd + attention_control
+'
+fit_measurement <- sem(model_measurement, data = data, std.lv = TRUE)
+summary(fit_measurement, fit.measures = TRUE, standardized = TRUE)
+```
+```{r}
+library(lavaan)
+
+# Define the SEM model with three latent variables
+model <- '
+  # Latent variables
+  PositiveDaydreaming =~ Positive_dd
+  GuiltDaydreaming =~ dysphoric_dd
+  AttentionControl =~ attention_control
+  
+  # Structural paths
+  PositiveDaydreaming ~ high_ability
+  GuiltDaydreaming ~ high_ability
+  AttentionControl ~ high_ability
+  
+  obj_under ~ PositiveDaydreaming + GuiltDaydreaming + AttentionControl
+  sub_under ~ PositiveDaydreaming + GuiltDaydreaming + AttentionControl
+'
+
+# Fit the model
+fit <- sem(model, data = data, std.lv = TRUE)
+
+# Summarize results
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+```{r}
+library(lavaan)
+
+# Define the SEM model with three latent variables
+model <- '
+  # Latent variables
+  PositiveDaydreaming =~ Positive_dd
+  GuiltDaydreaming =~ dysphoric_dd
+  AttentionControl =~ attention_control
+  
+  # Structural paths
+  obj_under ~ PositiveDaydreaming + GuiltDaydreaming + AttentionControl
+  
+'
+
+# Fit the model
+fit <- sem(model, data = high_ability_data, std.lv = TRUE)
+
+# Summarize results
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+```{r}
+# Basic SEM model specification
+model <- '
+  # Direct effects
+  obj_under ~ Positive_dd + dysphoric_dd + attention_control
+  sub_under ~ Positive_dd + dysphoric_dd + attention_control
+  
+  # Covariances between predictors
+  Positive_dd ~~ dysphoric_dd
+  Positive_dd ~~ attention_control
+  dysphoric_dd ~~ attention_control
+'
+
+# Fit the model
+fit <- sem(model, data = high_ability_data)
+
+# Get summary of results
+summary(fit, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+# Modified model with mediation
+model_mediation <- '
+  # Direct effects
+  sub_under ~ Positive_dd + attention_control
+  obj_under ~ sub_under + Positive_dd + dysphoric_dd + attention_control
+
+  # Covariances
+  Positive_dd ~~ dysphoric_dd
+  Positive_dd ~~ attention_control
+  dysphoric_dd ~~ attention_control
+'
+
+# Fit the model
+fit2 <- sem(model_mediation, data = high_ability_data)
+
+# Get summary of results
+summary(fit2, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+# Constrained model specification
+model_constrained <- '
+    # Direct effects on mediator (subjective underachievement)
+    sub_under ~ a1*Positive_dd + a2*attention_control
+    
+    # Direct and mediated effects on outcome
+    obj_under ~ c1*Positive_dd + c2*dysphoric_dd + c3*attention_control + b*sub_under
+    
+    # Significant covariances only
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+'
+
+# Fit the constrained model
+fit_constrained <- sem(model_constrained, 
+                      data = high_ability_data,
+                      ordered = c("obj_under", "sub_under"))
+
+summary(fit_constrained, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r}
+# Scale the continuous daydreaming variables
+high_ability_data$Positive_dd_c <- scale(high_ability_data$Positive_dd)
+high_ability_data$dysphoric_dd_c <- scale(high_ability_data$dysphoric_dd)
+high_ability_data$attention_control_c <- scale(high_ability_data$attention_control)
+
+# Create interaction terms with binary subjective underachievement
+high_ability_data$dys_sub_inter <- high_ability_data$dysphoric_dd_c * (high_ability_data$sub_under - 1)
+high_ability_data$att_sub_inter <- high_ability_data$attention_control_c * (high_ability_data$sub_under - 1)
+high_ability_data$pos_sub_inter <- high_ability_data$Positive_dd_c * (high_ability_data$sub_under - 1)
+```
+
+
+```{r}
+# Recode the binary variables (1,2 to 0,1)
+high_ability_data$obj_under_rec <- high_ability_data$obj_under - 1
+high_ability_data$sub_under_rec <- high_ability_data$sub_under - 1
+
+# Standardize continuous predictors
+high_ability_data$Positive_dd_c <- scale(high_ability_data$Positive_dd)
+high_ability_data$dysphoric_dd_c <- scale(high_ability_data$dysphoric_dd)
+high_ability_data$attention_control_c <- scale(high_ability_data$attention_control)
+
+# Create interaction terms with recoded subjective underachievement
+high_ability_data$dys_sub_inter <- high_ability_data$dysphoric_dd_c * high_ability_data$sub_under_rec
+high_ability_data$att_sub_inter <- high_ability_data$attention_control_c * high_ability_data$sub_under_rec
+high_ability_data$pos_sub_inter <- high_ability_data$Positive_dd_c * high_ability_data$sub_under_rec
+
+# Fit logistic regression model with interactions using recoded variables
+model <- glm(obj_under_rec ~ dysphoric_dd_c + attention_control_c + Positive_dd_c + 
+             sub_under_rec + dys_sub_inter + att_sub_inter + pos_sub_inter,
+             family = binomial(link = "logit"),
+             data = high_ability_data)
+
+# Examine results
+summary(model)
+```
+```{r}
+# Specify the mediation model
+model_mediation <- '
+    # Direct paths to mediator (subjective underachievement)
+    sub_under ~ a1*Positive_dd + a2*dysphoric_dd + a3*attention_control
+
+    # Direct paths to outcome (objective underachievement)
+    obj_under ~ b*sub_under + c1*Positive_dd + c2*dysphoric_dd + c3*attention_control
+
+    # Define indirect effects
+    pos_indirect := a1*b
+    dys_indirect := a2*b
+    att_indirect := a3*b
+
+    # Define total effects
+    pos_total := c1 + (a1*b)
+    dys_total := c2 + (a2*b)
+    att_total := c3 + (a3*b)
+'
+
+# Fit the model with appropriate estimator for categorical variables
+fit_mediation <- sem(model_mediation, 
+                    data = high_ability_data,
+                    ordered = c("obj_under", "sub_under"),
+                    estimator = "DWLS")
+
+# Request standardized solution and indirect effects
+summary(fit_mediation, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+# Install and load required package if not already installed
+# install.packages("DiagrammeR")
+library(DiagrammeR)
+
+# Create a customized path diagram
+grViz("
+  digraph mediation {
+    
+    # Node definitions
+    node [shape = box]
+    PD [label = 'Positive\nDaydreaming']
+    DD [label = 'Dysphoric\nDaydreaming']
+    AC [label = 'Attention\nControl']
+    
+    node [shape = circle]
+    SU [label = 'Subjective\nUnderachievement']
+    OU [label = 'Objective\nUnderachievement']
+    
+    # Edge definitions with coefficients
+    PD -> SU [label = '-0.213***']
+    DD -> SU [label = '0.036']
+    AC -> SU [label = '0.321***']
+    
+    PD -> OU [label = '-0.139**']
+    DD -> OU [label = '0.232***']
+    AC -> OU [label = '0.157**']
+    
+    SU -> OU [label = '0.251***']
+  }
+")
+```
+```{r}
+library(DiagrammeR)
+
+diagram <- grViz("
+  digraph mediation {
+    rankdir = LR;
+    
+    # Node attributes
+    node [shape = box, fontname = 'Arial', fontsize = 12];
+    
+    # Predictor variables
+    PD [label = 'Positive\nDaydreaming'];
+    DD [label = 'Dysphoric\nDaydreaming'];
+    AC [label = 'Attention\nControl'];
+    
+    # Outcome variables
+    SU [label = 'Subjective\nUnderachievement'];
+    OU [label = 'Objective\nUnderachievement'];
+    
+    # Path definitions
+    edge [fontname = 'Arial', fontsize = 10];
+    PD -> SU [label = '-0.21***'];
+    DD -> SU [label = '0.04'];
+    AC -> SU [label = '0.32***'];
+    
+    PD -> OU [label = '-0.14**'];
+    DD -> OU [label = '0.23***'];
+    AC -> OU [label = '0.16**'];
+    
+    SU -> OU [label = '0.25***'];
+  }
+")
+
+diagram
+```
+
+```{r}
+library(ggplot2)
+
+# Create data for plotting
+# Get range of dysphoric daydreaming scores
+dd_range <- range(high_ability_data$dysphoric_dd_c)
+
+# Create prediction data frame
+pred_data <- expand.grid(
+    dysphoric_dd_c = seq(dd_range[1], dd_range[2], length.out = 100),
+    sub_under_rec = c(0, 1)
+)
+
+# Add other predictors at their means (0 since they're standardized)
+pred_data$attention_control_c <- 0
+pred_data$Positive_dd_c <- 0
+
+# Calculate interaction terms
+pred_data$dys_sub_inter <- pred_data$dysphoric_dd_c * pred_data$sub_under_rec
+pred_data$att_sub_inter <- pred_data$attention_control_c * pred_data$sub_under_rec
+pred_data$pos_sub_inter <- pred_data$Positive_dd_c * pred_data$sub_under_rec
+
+# Calculate predicted probabilities
+pred_data$predicted <- predict(model, newdata = pred_data, type = "response")
+
+# Create the plot
+ggplot(pred_data, aes(x = dysphoric_dd_c, y = predicted, color = factor(sub_under_rec))) +
+  geom_line(size = 1) +
+  scale_color_manual(values = c("#2C3E50", "#E74C3C"),
+                    labels = c("No Subjective Underachievement", 
+                             "Subjective Underachievement"),
+                    name = "Subjective\nUnderachievement Status") +
+  labs(x = "Dysphoric Daydreaming (Standardized)",
+       y = "Probability of Objective Underachievement",
+       title = "Moderation Effect of Subjective Underachievement") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+```{r}
+model_mediation_cov <- '
+    # Direct paths to mediator (subjective underachievement)
+    sub_under ~ a1*Positive_dd + a2*dysphoric_dd + a3*attention_control
+
+    # Direct paths to outcome (objective underachievement)
+    obj_under ~ b*sub_under + c1*Positive_dd + c2*dysphoric_dd + c3*attention_control
+
+    # Covariances among predictors
+    Positive_dd ~~ dysphoric_dd
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+
+    # Define indirect effects
+    pos_indirect := a1*b
+    dys_indirect := a2*b
+    att_indirect := a3*b
+
+    # Define total effects
+    pos_total := c1 + (a1*b)
+    dys_total := c2 + (a2*b)
+    att_total := c3 + (a3*b)
+'
+
+# Fit the model with appropriate estimator for categorical variables
+fit_mediation_cov <- sem(model_mediation_cov, 
+                        data = high_ability_data,
+                        ordered = c("obj_under", "sub_under"),
+                        estimator = "DWLS")
+
+
+
+# Request standardized solution and indirect effects
+summary(fit_mediation_cov, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+library(DiagrammeR)
+
+grViz("
+  digraph mediation {
+    rankdir = LR;
+    
+    # Node definitions with styling
+    node [shape = box, style = 'rounded,filled', fillcolor = '#E8F4F8'];
+    PD [label = 'Positive\nDaydreaming'];
+    DD [label = 'Dysphoric\nDaydreaming'];
+    AC [label = 'Attention\nControl'];
+    
+    node [shape = box, style = 'rounded,filled', fillcolor = '#F8E8E8'];
+    SU [label = 'Subjective\nUnderachievement'];
+    OU [label = 'Objective\nUnderachievement'];
+    
+    # Path definitions with coefficients
+    edge [fontname = 'Arial', fontsize = 10];
+    PD -> SU [label = '-0.179***', color = '#2166AC'];
+    AC -> SU [label = '0.322***', color = '#B2182B'];
+    DD -> SU [style = 'dashed', color = 'gray'];
+    
+    PD -> OU [label = '-0.152***', color = '#2166AC'];
+    DD -> OU [label = '0.249***', color = '#B2182B'];
+    AC -> OU [label = '0.150*', color = '#B2182B'];
+    
+    SU -> OU [label = '0.240***', color = '#B2182B'];
+    
+    # Covariances (curved edges)
+    edge [style = 'dashed'];
+    DD -> AC [dir = 'both', label = '0.499***'];
+    PD -> AC [dir = 'both', label = '-0.156***'];
+  }
+")
+```
+
+```{r}
+model_second_order <- '
+    # Define general daydreaming as a latent construct
+    daydreaming =~ Positive_dd + dysphoric_dd + attention_control
+
+    # Structural paths for mediation
+    sub_under ~ daydreaming
+    obj_under ~ sub_under + daydreaming
+'
+
+# Fit the model with appropriate specifications
+fit_second_order <- sem(model_second_order, 
+                       data = high_ability_data,
+                       ordered = c("obj_under", "sub_under"),
+                       parameterization = "theta",
+                       estimator = "WLSMV")
+```
+```{r}
+model_first_order <- '
+    # Direct effects on mediator (subjective underachievement)
+    sub_under ~ a1*Positive_dd + a2*dysphoric_dd + a3*attention_control
+
+    # Direct and mediated effects on outcome (objective underachievement)
+    obj_under ~ b*sub_under + c1*Positive_dd + c2*dysphoric_dd + c3*attention_control
+
+    # Allow types of daydreaming to correlate
+    Positive_dd ~~ dysphoric_dd
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+
+    # Define indirect effects
+    pos_indirect := a1*b
+    dys_indirect := a2*b
+    att_indirect := a3*b
+
+    # Define total effects
+    pos_total := c1 + (a1*b)
+    dys_total := c2 + (a2*b)
+    att_total := c3 + (a3*b)
+'
+
+# Fit the model
+fit_first_order <- sem(model_first_order, 
+                      data = high_ability_data,
+                      ordered = c("obj_under", "sub_under"),
+                      parameterization = "theta",
+                      estimator = "DWLS")
+
+summary(fit_first_order, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+grViz("
+  digraph mediation {
+    rankdir = LR;
+    
+    # Node definitions
+    node [shape = box, style = 'rounded,filled', fillcolor = '#E8F4F8'];
+    PD [label = 'Positive\nDaydreaming'];
+    DD [label = 'Dysphoric\nDaydreaming'];
+    AC [label = 'Attention\nControl'];
+    
+    node [fillcolor = '#F8E8E8'];
+    SU [label = 'Subjective\nUnderachievement'];
+    OU [label = 'Objective\nUnderachievement'];
+    
+    # Edge definitions
+    edge [fontname = 'Arial', fontsize = 10];
+    PD -> SU [label = '-0.179***'];
+    DD -> SU [label = '-0.017'];
+    AC -> SU [label = '0.322***'];
+    
+    PD -> OU [label = '-0.156***'];
+    DD -> OU [label = '0.255***'];
+    AC -> OU [label = '0.154*'];
+    
+    SU -> OU [label = '0.246***'];
+  }
+")
+```
+```{r}
+# First, specify the model for multiple group analysis
+model_multigroup <- '
+    # Direct effects on mediator (subjective underachievement)
+    sub_under ~ a1*Positive_dd + a2*dysphoric_dd + a3*attention_control
+
+    # Direct and mediated effects on outcome (objective underachievement)
+    obj_under ~ b*sub_under + c1*Positive_dd + c2*dysphoric_dd + c3*attention_control
+
+    # Allow types of daydreaming to correlate
+    Positive_dd ~~ dysphoric_dd
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+
+    # Define indirect effects
+    pos_indirect := a1*b
+    dys_indirect := a2*b
+    att_indirect := a3*b
+'
+```
+
+```{r}
+model_multigroup <- '
+    # Group 1 [Hong Kong]
+    sub_under ~ a1_hk*Positive_dd + a2_hk*dysphoric_dd + a3_hk*attention_control
+    obj_under ~ b_hk*sub_under + c1_hk*Positive_dd + c2_hk*dysphoric_dd + c3_hk*attention_control
+
+    # Group 2 [USA]
+    sub_under ~ a1_usa*Positive_dd + a2_usa*dysphoric_dd + a3_usa*attention_control
+    obj_under ~ b_usa*sub_under + c1_usa*Positive_dd + c2_usa*dysphoric_dd + c3_usa*attention_control
+
+    # Allow types of daydreaming to correlate in both groups
+    Positive_dd ~~ dysphoric_dd
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+'
+```
+
+
+```{r}
+# Fit the multiple group model
+fit_multigroup <- sem(model_multigroup, 
+                     data = high_ability_data,
+                     group = "region",
+                     group.equal = c("intercepts", "regressions"),
+                     ordered = c("obj_under", "sub_under"),
+                     parameterization = "theta",
+                     estimator = "DWLS")
+
+# Test for measurement invariance
+fit_configural <- sem(model_multigroup, 
+                     data = high_ability_data,
+                     group = "region",
+                     ordered = c("obj_under", "sub_under"),
+                     parameterization = "theta",
+                     estimator = "DWLS")
+
+# Compare models to test for regional differences
+anova(fit_multigroup, fit_configural)
+
+# Get detailed results for each group
+summary(fit_multigroup, standardized = TRUE, fit.measures = TRUE)
+```
+```{r}
+# First, fit separate models for each region
+hk_data <- subset(high_ability_data, region == 3)
+usa_data <- subset(high_ability_data, region == 5)
+
+# Fit model for Hong Kong
+fit_hk <- sem(model_multigroup, 
+              data = hk_data,
+              ordered = c("obj_under", "sub_under"),
+              estimator = "DWLS")
+
+# Fit model for USA
+fit_usa <- sem(model_multigroup, 
+               data = usa_data,
+               ordered = c("obj_under", "sub_under"),
+               
+               estimator = "DWLS")
+```
+
+
+```{r}
+model_multigroup <- '
+    # Group-specific paths for Hong Kong
+    group: "3" 
+        sub_under ~ a1.hk*Positive_dd + a2.hk*dysphoric_dd + a3.hk*attention_control
+        obj_under ~ b.hk*sub_under + c1.hk*Positive_dd + c2.hk*dysphoric_dd + c3.hk*attention_control
+        
+        # Correlations for Hong Kong
+        Positive_dd ~~ dysphoric_dd + attention_control
+        dysphoric_dd ~~ attention_control
+
+    # Group-specific paths for USA
+    group: "5"
+        sub_under ~ a1.us*Positive_dd + a2.us*dysphoric_dd + a3.us*attention_control
+        obj_under ~ b.us*sub_under + c1.us*Positive_dd + c2.us*dysphoric_dd + c3.us*attention_control
+        
+        # Correlations for USA
+        Positive_dd ~~ dysphoric_dd + attention_control
+        dysphoric_dd ~~ attention_control
+'
+
+# Fit the model with appropriate specifications
+fit_multigroup <- sem(model_multigroup, 
+                     data = high_ability_data,
+                     group = "region",
+                     ordered = c("obj_under", "sub_under"),
+                     parameterization = "theta",
+                     estimator = "DWLS")
+# Get summaries for both models
+summary(fit_multigroup, standardized = TRUE, fit.measures = TRUE)
+
+```
+
+
+```{r}
+model_first_order <- '
+    # Direct effects on mediator (subjective underachievement)
+    sub_under ~ a1_3*Positive_dd + a2_3*dysphoric_dd + a3_3*attention_control
+    sub_under ~ a1_5*Positive_dd + a2_5*dysphoric_dd + a3_5*attention_control
+
+    # Direct and mediated effects on outcome (objective underachievement)
+    obj_under ~ b_3*sub_under + c1_3*Positive_dd + c2_3*dysphoric_dd + c3_3*attention_control
+    obj_under ~ b_5*sub_under + c1_5*Positive_dd + c2_5*dysphoric_dd + c3_5*attention_control
+
+    # Allow types of daydreaming to correlate (same across groups)
+    Positive_dd ~~ dysphoric_dd
+    Positive_dd ~~ attention_control
+    dysphoric_dd ~~ attention_control
+
+    # Define indirect effects (group-specific)
+    pos_indirect_3 := a1_3*b_3
+    dys_indirect_3 := a2_3*b_3
+    att_indirect_3 := a3_3*b_3
+
+    pos_indirect_5 := a1_5*b_5
+    dys_indirect_5 := a2_5*b_5
+    att_indirect_5 := a3_5*b_5
+
+    # Define total effects (group-specific)
+    pos_total_3 := c1_3 + (a1_3*b_3)
+    dys_total_3 := c2_3 + (a2_3*b_3)
+    att_total_3 := c3_3 + (a3_3*b_3)
+
+    pos_total_5 := c1_5 + (a1_5*b_5)
+    dys_total_5 := c2_5 + (a2_5*b_5)
+    att_total_5 := c3_5 + (a3_5*b_5)
+'
+
+# Fit the model
+fit_first_order <- sem(model_first_order, 
+                      data = high_ability_data,
+                      group = "region", # Replace with your actual grouping variable
+                      ordered = c("obj_under", "sub_under"),
+                      parameterization = "theta",
+                      estimator = "DWLS")
+
+summary(fit_first_order, standardized = TRUE, fit.measures = TRUE)
+```
+

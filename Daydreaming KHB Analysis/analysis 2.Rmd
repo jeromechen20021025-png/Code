@@ -1,0 +1,120 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-01-13"
+---
+```{r}
+data <- updated_analysis_three_domain
+
+head(data)
+```
+
+```{r}
+model1 <- lm(P_C_DayD ~ high_ability * sub_under, data = data)
+summary(model1)
+```
+```{r}
+# Load required library
+library(ggplot2)
+
+# Create an interaction plot
+ggplot(data, aes(x = factor(high_ability), y = P_C_DayD, color = factor(sub_under))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(sub_under))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "P_C_DayD",
+       color = "Subjective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+If you are not high-ability student, the subjective underachieving do not have effect on the relationship between high ability and positive constructive daydreaming. However, if students are identified as high-ability, people who are not subjective underachieving tend to have greater daydreaming, compare those who are.
+
+```{r}
+model2 <- lm(P_C_DayD ~ high_ability * binary_obj_under...51, data = data)
+summary(model2)
+```
+```{r}
+# Load required library
+library(ggplot2)
+
+# Create an interaction plot
+ggplot(data, aes(x = factor(high_ability), y = P_C_DayD, color = factor(binary_obj_under...51))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(binary_obj_under...51))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "P_C_DayD",
+       color = "Objective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+```{r}
+model1_mD <- lm(G_F_DayD ~ high_ability * binary_obj_under...51,data = data)
+summary(model1_mD)
+```
+```{r}
+ggplot(data, aes(x = factor(high_ability), y = G_F_DayD, color = factor(binary_obj_under...51))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(binary_obj_under...51))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "Maladaptive Daydreaming",
+       color = "Objective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+```{r}
+model2_mD <- lm(G_F_DayD ~ high_ability * sub_under, data = data)
+summary(model2_mD)
+```
+```{r}
+ggplot(data, aes(x = factor(high_ability), y = G_F_DayD, color = factor(sub_under))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(sub_under))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "Maladaptive Daydreaming",
+       color = "Subjective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+```{r}
+model1_P_AC <- lm(Poor_AC ~ high_ability * sub_under, data = data)
+summary(model1_P_AC)
+```
+```{r}
+ggplot(data, aes(x = factor(high_ability), y = Poor_AC, color = factor(sub_under))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(sub_under))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "Poor_AC",
+       color = "Subjective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+
+```{r}
+model2_P_AC <- lm(Poor_AC ~ high_ability * binary_obj_under...51, data = data)
+summary(model2_P_AC)
+```
+
+```{r}
+ggplot(data, aes(x = factor(high_ability), y = Poor_AC, color = factor(binary_obj_under...51))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(binary_obj_under...51))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "Poor_AC",
+       color = "Objective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+

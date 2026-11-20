@@ -1,0 +1,202 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-01-10"
+---
+
+```{r}
+data <- updated
+
+# Calculate totals for each row across columns AO to AU
+data$Total_Yes <- rowSums(data[, c("Chinese", "English", "Dutch", "Math", 
+                                  "Science", "History", "Geography")] == "Yes", 
+                         na.rm = TRUE)
+
+data$Total_No <- rowSums(data[, c("Chinese", "English", "Dutch", "Math", 
+                                 "Science", "History", "Geography")] == "No", 
+                        na.rm = TRUE)
+
+data$Total_NA <- rowSums(data[, c("Chinese", "English", "Dutch", "Math", 
+                                 "Science", "History", "Geography")] == "NA", 
+                        na.rm = TRUE)
+
+# To verify the results
+head(data[, c("Chinese", "English", "Dutch", "Math", "Science", "History", 
+              "Geography", "Total_Yes", "Total_No", "Total_NA")])
+```
+```{r}
+# Create binary_obj_under column
+data$binary_obj_under <- ifelse(data$Total_Yes > 0, 2, 1)
+# View the distribution of the new column
+table(data$binary_obj_under, data$Total_Yes)
+```
+
+```{r}
+# Create high_ability column
+data$high_ability <- ifelse(rowSums(data[, c("gifted_mem", "tot", "extra_support", 
+                                            "extra_support_past")] == 2) > 0, 2, 1)
+```
+
+```{r}
+# Create a summary table to verify the coding
+verification_table <- table(data$high_ability,
+                          data[, c("gifted_mem", "tot", "extra_support", 
+                                 "extra_support_past")])
+print(verification_table)
+```
+```{r}
+# Load the required library
+library(writexl)
+
+# Export the data to Excel
+write_xlsx(data, "updated_analysis.xlsx")
+```
+```{r}
+# Convert high_ability to factor with clear labels
+data$high_ability <- factor(data$high_ability, 
+                           levels = c(1, 2),
+                           labels = c("No", "Yes"))
+
+# Verify the conversion
+table(data$high_ability)
+```
+```{r}
+# Count the frequency of each value in binary_obj_under
+table(data$binary_obj_under)
+```
+
+```{r}
+# Perform t-test with the categorical variable
+t_test_result <- t.test(SIPI_sum...53 ~ high_ability, data = data)
+t_test_result
+```
+```{r}
+# Linear regression
+model <- lm(SIPI_sum...53 ~ high_ability, data = data)
+summary(model)
+```
+```{r}
+# One-way ANOVA
+anova_result <- aov(SIPI_sum...53 ~ high_ability, data = data)
+summary(anova_result)
+```
+
+
+```{r}
+# Model 1: Subjective underachievement as moderator
+model1 <- lm(SIPI_sum...53 ~ high_ability * sub_under, data = data)
+summary(model1)
+
+# Model 2: Objective underachievement as moderator
+model2 <- lm(SIPI_sum...53 ~ high_ability * binary_obj_under, data = data)
+summary(model2)
+```
+```{r}
+# Load required library
+library(ggplot2)
+
+# Create an interaction plot
+ggplot(data, aes(x = factor(high_ability), y = SIPI_sum...53, color = factor(binary_obj_under))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(binary_obj_under))) +
+  labs(title = "Interaction between High Ability and Objective Underachievement",
+       x = "High Ability Status",
+       y = "Daydreaming Score (SIPI)",
+       color = "Objective Underachievement") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+```{r}
+# Calculate mean daydreaming scores for each combination
+aggregate(SIPI_sum...53 ~ high_ability + binary_obj_under, data = data, mean)
+```
+
+```{r}
+# Create interaction plot for subjective underachievement
+ggplot(data, aes(x = factor(high_ability), y = SIPI_sum...53, color = factor(sub_under))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(sub_under))) +
+  labs(title = "Interaction between High Ability and Subjective Underachievement",
+       x = "High Ability Status",
+       y = "Daydreaming Score (SIPI)",
+       color = "Subjective Underachievement") +
+  scale_color_manual(values = c("darkgreen", "orange"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+```{r}
+aggregate(SIPI_sum...53 ~ high_ability + sub_under, data = data, mean)
+
+```
+
+```{r}
+# Create a box plot with added elements for better visualization
+ggplot(data, aes(x = factor(high_ability), y = SIPI_sum...53)) +
+  geom_boxplot(fill = "lightblue", alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.1, color = "darkblue") +
+  stat_summary(fun = mean, geom = "point", color = "red", size = 3) +
+  labs(title = "Daydreaming Scores by High Ability Status",
+       x = "High Ability Status (1: No, 2: Yes)",
+       y = "Daydreaming Score (SIPI)") +
+  theme_minimal()
+```
+```{r}
+# For objective underachievement as predictor
+model_obj <- lm(SIPI_sum...53 ~ binary_obj_under * high_ability, data = data)
+summary(model_obj)
+
+# For subjective underachievement as predictor
+model_subj <- lm(SIPI_sum...53 ~ sub_under * high_ability, data = data)
+summary(model_subj)
+```
+
+```{r}
+# Plot for objective underachievement
+ggplot(data, aes(x = factor(binary_obj_under), y = SIPI_sum...53, color = factor(high_ability))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(high_ability))) +
+  labs(title = "Effect of Objective Underachievement on Daydreaming by High Ability Status",
+       x = "Objective Underachievement",
+       y = "Daydreaming Score (SIPI)",
+       color = "High Ability Status") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+
+# Plot for subjective underachievement
+ggplot(data, aes(x = factor(sub_under), y = SIPI_sum...53, color = factor(high_ability))) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  stat_summary(fun = mean, geom = "line", aes(group = factor(high_ability))) +
+  labs(title = "Effect of Subjective Underachievement on Daydreaming by High Ability Status",
+       x = "Subjective Underachievement",
+       y = "Daydreaming Score (SIPI)",
+       color = "High Ability Status") +
+  scale_color_manual(values = c("blue", "red"),
+                    labels = c("No", "Yes")) +
+  theme_minimal()
+```
+
+```{r}
+# Create a subset of only high-ability students
+high_ability_data <- subset(data, high_ability == "Yes")
+```
+
+```{r}
+high_ability_data
+```
+
+
+```{r}
+# Analyze objective underachievement's effect on daydreaming for high-ability students
+model_obj_high <- lm(SIPI_sum...53 ~ binary_obj_under, data = high_ability_data)
+summary(model_obj_high)
+
+# Analyze subjective underachievement's effect on daydreaming for high-ability students
+model_subj_high <- lm(SIPI_sum...53 ~ sub_under, data = high_ability_data)
+summary(model_subj_high)
+```
+```{r}
+data <- data_three_domain
+```
+

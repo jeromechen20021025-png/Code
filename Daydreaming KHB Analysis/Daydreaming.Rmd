@@ -1,0 +1,193 @@
+---
+title: "DayDreaming"
+output: html_document
+date: "2025-01-18"
+---
+
+```{r}
+data_all <- updated_analysis_three_domain
+# Filter for high-ability students
+data <- data_all[data_all$high_ability == "2", ]
+```
+
+
+```{r}
+data$SCSY_2_rev <- 6 - data$SCSY_2
+data$SCSY_3_rev <- 6 - data$SCSY_3
+data$SCSY_5_rev <- 6 - data$SCSY_5
+data$SCSY_7_rev <- 6 - data$SCSY_7
+data$SCSY_10_rev <- 6 - data$SCSY_10
+data$SCSY_12_rev <- 6 - data$SCSY_12
+data$SCSY_14_rev <- 6 - data$SCSY_14
+data$SCSY_16_rev <- 6 - data$SCSY_16
+
+# Calculate subscales
+data$self_kindness <- (data$SCSY_1 + data$SCSY_9 + data$SCSY_15) / 3
+data$self_judgment <- (data$SCSY_3_rev + data$SCSY_7_rev + data$SCSY_12_rev) / 3
+data$common_humanity <- (data$SCSY_4 + data$SCSY_8 + data$SCSY_13) / 3
+data$isolation <- (data$SCSY_2_rev + data$SCSY_10_rev + data$SCSY_16_rev) / 3
+data$mindfulness <- (data$SCSY_6 + data$SCSY_11 + data$SCSY_17) / 3
+data$over_identification <- (data$SCSY_5_rev + data$SCSY_5_rev) / 2
+
+# Calculate total score
+data$total_score_SCSY <- (data$self_kindness + data$self_judgment + 
+                    data$common_humanity + data$isolation + 
+                    data$mindfulness + data$over_identification) / 6
+
+data$SCSY_normalized <- scale(data$total_score_SCSY)
+data$daydreaming_normalized1 <- scale(data$dysphoric_dd)
+data$daydreaming_normalized2 <- scale(data$Positive_dd)
+data$daydreaming_normalized3 <- scale(data$attention_control)
+```
+
+```{r}
+# Recode the values: 1 -> 0 (no) and 2 -> 1 (yes)
+data$sub_under <- factor(data$sub_under, levels = c(1, 2), labels = c("0", "1"))
+data$obj_under <- factor(data$obj_under, levels = c(1, 2), labels = c("0", "1"))
+```
+
+```{r}
+# First, load necessary libraries
+install.packages("caret")
+```
+
+```{r}
+install.packages("glmnet")
+install.packages("vctrs")
+```
+
+```{r}
+install.packages("caTools")
+```
+```{r}
+install.packages("randomForest", 
+                repos = "https://mac.R-project.org",
+                type = "binary")
+```
+
+```{r}
+library(vctrs)
+library(caTools)
+library(caret)  # for ML functions
+library(tidyverse)  # for data manipulation
+```
+
+
+```{r}
+library(randomForest)  # for random forest model
+```
+
+```{r}
+library(caret)
+```
+
+
+```{r}
+evaluate_predictions <- function(predicted, actual) {
+    # Create confusion matrix
+    conf_matrix <- table(Predicted = predicted, Actual = actual)
+    
+    # Calculate accuracy
+    accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+    
+    # Print results
+    print("Confusion Matrix:")
+    print(conf_matrix)
+    print(paste("Accuracy:", round(accuracy, 3)))
+}
+```
+
+
+
+
+```{r}
+# Check class distribution in the full filtered dataset
+table(data$sub_under)
+table(data$obj_under)
+```
+
+
+
+```{r}
+# Split data into training and testing sets (80-20 split)
+set.seed(123)
+
+# Create the split
+split <- sample.split(data$sub_under, SplitRatio = 0.8)
+
+# Create training and testing datasets
+train_data <- data[split, ]
+test_data <- data[!split, ]
+```
+
+
+```{r}
+# Create model formulas
+formula_sub <- sub_under ~ SCSY_normalized + daydreaming_normalized1 + daydreaming_normalized2 + daydreaming_normalized3
+formula_obj <- obj_under ~ SCSY_normalized + daydreaming_normalized1 + daydreaming_normalized2 + daydreaming_normalized3
+
+# Train logistic regression models
+model_sub_log <- glm(formula_sub, data = train_data, family = "binomial")
+model_obj_log <- glm(formula_obj, data = train_data, family = "binomial")
+
+# Train random forest models
+model_sub_rf <- randomForest(formula_sub, data = train_data)
+model_obj_rf <- randomForest(formula_obj, data = train_data)
+
+# Model evaluation
+# For logistic regression
+pred_sub_log <- predict(model_sub_log, test_data, type = "response")
+pred_obj_log <- predict(model_obj_log, test_data, type = "response")
+
+# Convert probabilities to class predictions (threshold = 0.5)
+pred_class_sub_log <- ifelse(pred_sub_log > 0.5, "1", "0")
+pred_class_obj_log <- ifelse(pred_obj_log > 0.5, "1", "0")
+
+# Calculate accuracy and other metrics
+confusionMatrix(factor(pred_class_sub_log), test_data$sub_under)
+confusionMatrix(factor(pred_class_obj_log), test_data$obj_under)
+```
+
+
+```{r}
+# For random forest
+pred_sub_rf <- predict(model_sub_rf, test_data)
+pred_obj_rf <- predict(model_obj_rf, test_data)
+```
+
+```{r}
+# Create a simple evaluation function
+evaluate_model <- function(predicted, actual) {
+    conf_matrix <- table(Predicted = predicted, Actual = actual)
+    accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+    
+    # Calculate additional metrics
+    true_pos <- conf_matrix[2,2]
+    false_pos <- conf_matrix[2,1]
+    true_neg <- conf_matrix[1,1]
+    false_neg <- conf_matrix[1,2]
+    
+    sensitivity <- true_pos / (true_pos + false_neg)
+    specificity <- true_neg / (true_neg + false_pos)
+    
+    # Return results
+    cat("Confusion Matrix:\n")
+    print(conf_matrix)
+    cat("\nModel Performance Metrics:\n")
+    cat("Accuracy:", round(accuracy, 3), "\n")
+    cat("Sensitivity:", round(sensitivity, 3), "\n")
+    cat("Specificity:", round(specificity, 3), "\n")
+}
+
+# Apply to your random forest predictions
+evaluate_model(pred_sub_rf, test_data$sub_under)
+```
+```{r}
+evaluate_model(pred_obj_rf, test_data$sub_under)
+```
+
+```{r}
+confusionMatrix(pred_sub_rf, test_data$sub_under)
+confusionMatrix(pred_obj_rf, test_data$obj_under)
+```
+
