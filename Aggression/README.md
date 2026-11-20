@@ -1,18 +1,24 @@
 # Parental Control, Adolescent Disclosure, and Aggression
 
 ## Project Overview
-This study investigates the associations among parental control, adolescent disclosure to parents, and reactive and proactive aggression among Hong Kong adolescents using a multi-informant research design.
+This cross-sectional, multi-informant study investigates the associations among parental control, adolescent disclosure to parents, and reactive and proactive aggression among Hong Kong adolescents.
 
 ## Statistical Methods
-- Data preprocessing and management
+- Descriptive statistics
+- Internal consistency reliability analysis
 - Correlation and regression analyses
-- Mediation and moderation analyses
+- Multivariate analysis of variance (MANOVA)
+- Mediation analysis
 - Sex-specific analyses
 - Fisher's r-to-z transformation
-- Data visualization
 
 ## Software
-R
+R and IBM SPSS Statistics
 
 ## Repository Contents
-Statistical code supporting the data processing, analyses, and visualization conducted for this research project.
+Selected analytical materials supporting data processing, statistical analysis, and visualization.
+
+## Publication Status
+**Status:** Under revision
+
+**Manuscript:** Parental Control, Child Disclosure, and Reactive and Proactive Aggression Among Hong Kong Chinese Adolescents.
